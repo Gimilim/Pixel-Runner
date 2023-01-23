@@ -15,6 +15,7 @@ OBSTACLE_SPAWN_RANGE = [900, 1100]
 PLAYER_WALK_1 = 'graphics/Player/Player_walk_1.png'
 PLAYER_WALK_2 = 'graphics/Player/Player_walk_2.png'
 PLAYER_JUMP = 'graphics/Player/Player_jump.png'
+PLAYER_STAND = 'graphics/Player/Player_stand.png'
 
 FLY_1 = 'graphics/Fly/Fly_1.png'
 FLY_2 = 'graphics/Fly/Fly_2.png'
@@ -111,6 +112,14 @@ def display_score():
     return current_time
 
 
+def collision_sprite():
+    if pygame.sprite.spritecollide(player.sprite, obstacle_group, False):
+        obstacle_group.empty()
+        return False
+    else:
+        return True
+
+
 pygame.init()
 
 screen = pygame.display.set_mode(WINDOW_SIZE)
@@ -119,6 +128,11 @@ pygame.display.set_caption('~:*_Pixel Runner_*:~')
 clock = pygame.time.Clock()
 
 score = 0
+
+# Menu
+player_stand_surf = pygame.image.load(PLAYER_STAND).convert_alpha()
+player_stand_surf = pygame.transform.rotozoom(player_stand_surf, 0, 2)
+player_stand_rect = player_stand_surf.get_rect(center=(400, 210))
 
 # Groups
 player = pygame.sprite.GroupSingle()
@@ -188,15 +202,11 @@ while True:
         obstacle_group.update()
         obstacle_group.draw(screen)
 
-        # GAME_ACTIVE = collisions(player_rect, enemies_rect_list)
+        GAME_ACTIVE = collision_sprite()
 
     else:
-        enemies_rect_list = []
-        # player_rect = player_surf.get_rect(bottomleft=(10, 300))
-        player_gravity = 0
-
         screen.fill((94, 129, 162))
-        # screen.blit(player_stand_surf, player_stand_rect)
+        screen.blit(player_stand_surf, player_stand_rect)
 
         game_over_surf = game_font.render('Game Over', False, 'Gold')
         game_over_surf = pygame.transform.rotozoom(game_over_surf, 0, 2)
@@ -216,7 +226,7 @@ while True:
 
             screen.blit(game_name_surf, game_name_rect)
 
-        hint_surf = game_font.render('Press SPACE to start', False, 'Gold')
+        hint_surf = game_font.render('Press SPACE to start.', False, 'Gold')
         hint_rect = hint_surf.get_rect(center=(400, 350))
 
         screen.blit(hint_surf, hint_rect)
