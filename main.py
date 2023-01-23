@@ -6,7 +6,7 @@ import pygame
 WINDOW_SIZE = (800, 400)
 GAME_ACTIVE = False
 ENEMIES_SPEED = 5
-PLAYER_POSITION = (50, 300)  # Bottomleft
+PLAYER_POSITION = (50, 300)  # Bottomleft (x, y)
 FLY_BOTTOM = 210
 SNAIL_BOTTOM = 300
 OBSTACLE_SPAWN_RANGE = [900, 1100]
@@ -111,47 +111,6 @@ def display_score():
     return current_time
 
 
-def enemies_movement(enemies_rect_list):
-    if enemies_rect_list:
-        for enemies_rect in enemies_rect_list:
-            enemies_rect.x -= ENEMIES_SPEED
-
-            if enemies_rect.bottom == 300:
-                screen.blit(snail_surf, enemies_rect)
-            else:
-                screen.blit(fly_surf, enemies_rect)
-
-        enemies_rect_list = [
-            enemie for enemie in enemies_rect_list if enemie.x > -100
-        ]
-
-        return enemies_rect_list
-    else:
-        return []
-
-
-def collisions(player, enemies_rect_list):
-    if enemies_rect_list:
-        for enemie_rect in enemies_rect_list:
-            if player.colliderect(enemie_rect):
-                return False
-    return True
-
-
-def player_animation():
-    global player_surf, player_index
-
-    if player_rect.bottom < 300:
-        player_surf = player_jump
-    else:
-        player_index += 0.1
-        if player_index >= len(player_walk):
-            player_index = 0
-        player_surf = player_walk[int(player_index)]
-
-    return None
-
-
 pygame.init()
 
 screen = pygame.display.set_mode(WINDOW_SIZE)
@@ -176,6 +135,7 @@ sky_rect = sky_surf.get_rect(topleft=(0, 0))
 
 ground_surf = pygame.image.load('graphics/Ground.png').convert()
 
+# Оставить! Возможно потребуется переработать!
 # ground_rect = ground_surf.get_rect(topleft=(0, 300))
 ground_rect_1 = ground_surf.get_rect(topleft=(0, 300))
 ground_rect_2 = ground_surf.get_rect(topleft=(-8, 300))
@@ -183,62 +143,11 @@ ground_rects = [ground_rect_1, ground_rect_2]
 ground_index = 0
 ground_rect = ground_rects[ground_index]
 
-# Player
-player_walk_1 = pygame.image.load(
-    'graphics/Player/Player_walk_1.png'
-).convert_alpha()
-player_walk_2 = pygame.image.load(
-    'graphics/Player/Player_walk_2.png'
-).convert_alpha()
-
-player_walk = [player_walk_1, player_walk_2]
-
-player_jump = pygame.image.load(
-    'graphics/Player/Player_jump.png'
-).convert_alpha()
-
-player_index = 0
-
-player_surf = player_walk[player_index]
-player_rect = player_surf.get_rect(bottomleft=(10, 300))
-
-player_stand_surf = pygame.image.load(
-    'graphics/Player/Player_stand.png'
-).convert_alpha()
-player_stand_surf = pygame.transform.rotozoom(player_stand_surf, 0, 2)
-
-player_stand_rect = player_stand_surf.get_rect(center=(400, 210))
-player_gravity = 0
-
-# Enemies
-
-# Snail
-snail_frame_1 = pygame.image.load('graphics/Snail/Snail_1.png').convert_alpha()
-snail_frame_2 = pygame.image.load('graphics/Snail/Snail_2.png').convert_alpha()
-snail_frames = [snail_frame_1, snail_frame_2]
-snail_frame_index = 0
-snail_surf = snail_frames[snail_frame_index]
-
-# Fly
-fly_frame_1 = pygame.image.load('graphics/Fly/Fly_1.png').convert_alpha()
-fly_frame_2 = pygame.image.load('graphics/Fly/Fly_2.png').convert_alpha()
-fly_frames = [fly_frame_1, fly_frame_2]
-fly_frame_index = 0
-fly_surf = fly_frames[fly_frame_index]
-
-enemies_rect_list = []
-
 # Timer
 obstacle_timer = pygame.USEREVENT + 1
 pygame.time.set_timer(obstacle_timer, 1700)
 
-snail_animation_timer = pygame.USEREVENT + 2
-pygame.time.set_timer(snail_animation_timer, 300)
-
-fly_animation_timer = pygame.USEREVENT + 3
-pygame.time.set_timer(fly_animation_timer, 200)
-
-ground_animation_timer = pygame.USEREVENT + 4
+ground_animation_timer = pygame.USEREVENT + 2
 pygame.time.set_timer(ground_animation_timer, 200)
 
 # Main Game Loop
@@ -249,41 +158,8 @@ while True:
             exit()
 
         if GAME_ACTIVE:
-            if event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE:
-                if player_rect.bottom >= 300:
-                    player_gravity = -20
-
             if event.type == obstacle_timer:
                 obstacle_group.add(Obstacle(choice(['fly', 'snail', 'snail'])))
-                if randint(0, 2):
-                    enemies_rect_list.append(
-                        snail_surf.get_rect(
-                            bottomright=(randint(900, 1100), 300)
-                        )
-                    )
-
-                else:
-                    enemies_rect_list.append(
-                        fly_surf.get_rect(
-                            bottomright=(randint(900, 1100), 210)
-                        )
-                    )
-
-            if event.type == snail_animation_timer:
-                if snail_frame_index == 0:
-                    snail_frame_index = 1
-                else:
-                    snail_frame_index = 0
-
-                snail_surf = snail_frames[snail_frame_index]
-
-            if event.type == fly_animation_timer:
-                if fly_frame_index == 0:
-                    fly_frame_index = 1
-                else:
-                    fly_frame_index = 0
-
-                fly_surf = fly_frames[fly_frame_index]
 
             if event.type == ground_animation_timer:
                 if ground_index == 0:
@@ -302,39 +178,25 @@ while True:
         screen.blit(sky_surf, sky_rect)
         screen.blit(ground_surf, ground_rect)
 
-        # Score
+        # Score.
         score = display_score()
 
-        # Player
-        player_gravity += 1
-        player_rect.y += player_gravity
-
-        if player_rect.bottom >= 300:
-            player_rect.bottom = 300
-
-        player_animation()
-        screen.blit(player_surf, player_rect)
-
-        # test
+        # Draw and Update.
         player.update()
         player.draw(screen)
 
         obstacle_group.update()
         obstacle_group.draw(screen)
-        # test
 
-        # Enemies Movement
-        enemies_rect_list = enemies_movement(enemies_rect_list)
-
-        GAME_ACTIVE = collisions(player_rect, enemies_rect_list)
+        # GAME_ACTIVE = collisions(player_rect, enemies_rect_list)
 
     else:
         enemies_rect_list = []
-        player_rect = player_surf.get_rect(bottomleft=(10, 300))
+        # player_rect = player_surf.get_rect(bottomleft=(10, 300))
         player_gravity = 0
 
         screen.fill((94, 129, 162))
-        screen.blit(player_stand_surf, player_stand_rect)
+        # screen.blit(player_stand_surf, player_stand_rect)
 
         game_over_surf = game_font.render('Game Over', False, 'Gold')
         game_over_surf = pygame.transform.rotozoom(game_over_surf, 0, 2)
