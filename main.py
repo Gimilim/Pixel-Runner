@@ -3,15 +3,22 @@ from sys import exit
 
 import pygame
 
-WINDOW_SIZE = (800, 400)
+# Settings.
+WIDTH = 800
+HEIGHT = 400
+WINDOW_SIZE = (WIDTH, HEIGHT)
 GAME_ACTIVE = False
+PLAY_DEATH = False
+GROUND_LEVEL = 300
 ENEMIES_SPEED = 5
-PLAYER_POSITION = (50, 300)  # Bottomleft (x, y)
+PLAYER_POSITION = (50, GROUND_LEVEL)  # Bottomleft (x, y)
 FLY_BOTTOM = 210
-SNAIL_BOTTOM = 300
+SNAIL_BOTTOM = GROUND_LEVEL
 OBSTACLE_SPAWN_RANGE = [900, 1100]
+DEATH_JUMP = 5
+# PLAYER_JUMP = -20
 
-# Images
+# Images.
 PLAYER_WALK_1 = 'graphics/Player/Player_walk_1.png'
 PLAYER_WALK_2 = 'graphics/Player/Player_walk_2.png'
 PLAYER_JUMP = 'graphics/Player/Player_jump.png'
@@ -22,6 +29,9 @@ FLY_2 = 'graphics/Fly/Fly_2.png'
 
 SNAIL_1 = 'graphics/Snail/Snail_1.png'
 SNAIL_2 = 'graphics/Snail/Snail_2.png'
+
+SKY = 'graphics/Sky.png'
+GROUND = 'graphics/Ground.png'
 
 
 class Player(pygame.sprite.Sprite):
@@ -37,8 +47,10 @@ class Player(pygame.sprite.Sprite):
         self.rect = self.image.get_rect(bottomleft=(PLAYER_POSITION))
         self.gravity = 0
 
+        self.death_jump = DEATH_JUMP
+
     def animation_state(self):
-        if self.rect.bottom < 300:
+        if self.rect.bottom < GROUND_LEVEL:
             self.image = self.player_jump
         else:
             self.player_index += 0.1
@@ -48,19 +60,29 @@ class Player(pygame.sprite.Sprite):
 
     def player_input(self):
         keys = pygame.key.get_pressed()
-        if keys[pygame.K_SPACE] and self.rect.bottom >= 300:
+        if keys[pygame.K_SPACE] and self.rect.bottom >= GROUND_LEVEL:
             self.gravity = -20
 
     def aply_gravity(self):
         self.gravity += 1
         self.rect.y += self.gravity
-        if self.rect.bottom >= 300:
-            self.rect.bottom = 300
+        if self.rect.bottom >= GROUND_LEVEL:
+            self.rect.bottom = GROUND_LEVEL
+
+    def play_death(self):
+        self.rect.y -= self.death_jump
+        self.death_jump -= 0.1
+        if self.rect.top >= HEIGHT:
+            return False
+        return True
 
     def update(self):
-        self.player_input()
-        self.aply_gravity()
-        self.animation_state()
+        if PLAY_DEATH:
+            return self.play_death()
+        else:
+            self.player_input()
+            self.aply_gravity()
+            self.animation_state()
 
 
 class Obstacle(pygame.sprite.Sprite):
@@ -100,6 +122,39 @@ class Obstacle(pygame.sprite.Sprite):
         self.destroy()
 
 
+class Background(pygame.sprite.Sprite):
+    def __init__(self, type) -> None:
+        super().__init__()
+        self.type = type
+        if self.type == 'ground':
+            ground_state_1 = (0, GROUND_LEVEL)
+            ground_state_2 = (-8, GROUND_LEVEL)
+            self.ground_states = [ground_state_1, ground_state_2]
+            self.ground_index = 0
+
+            self.image = pygame.image.load(GROUND).convert()
+            self.rect = self.image.get_rect(
+                topleft=self.ground_states[self.ground_index]
+            )
+        else:
+            self.image = pygame.image.load(SKY).convert()
+            self.rect = self.image.get_rect(topleft=(0, 0))
+
+    def animation_state(self):
+        if self.type == 'ground':
+            self.ground_index += 0.1
+            if self.ground_index >= len(self.ground_states):
+                self.ground_index = 0
+            self.rect = self.ground_states[int(self.ground_index)]
+
+        return None
+
+    def update(self):
+        self.animation_state()
+
+        return None
+
+
 def display_score():
     current_time = int(pygame.time.get_ticks() / 1000) - start_time
     score_surf = game_font.render(
@@ -114,7 +169,6 @@ def display_score():
 
 def collision_sprite():
     if pygame.sprite.spritecollide(player.sprite, obstacle_group, False):
-        obstacle_group.empty()
         return False
     else:
         return True
@@ -123,48 +177,36 @@ def collision_sprite():
 pygame.init()
 
 screen = pygame.display.set_mode(WINDOW_SIZE)
+
 pygame.display.set_caption('~:*_Pixel Runner_*:~')
 
 clock = pygame.time.Clock()
 
 score = 0
 
-# Menu
+# Menu.
 player_stand_surf = pygame.image.load(PLAYER_STAND).convert_alpha()
 player_stand_surf = pygame.transform.rotozoom(player_stand_surf, 0, 2)
 player_stand_rect = player_stand_surf.get_rect(center=(400, 210))
 
-# Groups
+# Groups.
+background_group = pygame.sprite.Group()
+background_group.add(Background('ground'), Background('sky'))
+
 player = pygame.sprite.GroupSingle()
-player.add(Player())
+test = Player()
+player.add(test)
 
 obstacle_group = pygame.sprite.Group()
 
-# Font
+# Font.
 game_font = pygame.font.Font('Font/Pixeltype.ttf', 50)
 
-# BackGround
-sky_surf = pygame.image.load('graphics/Sky.png').convert()
-sky_rect = sky_surf.get_rect(topleft=(0, 0))
-
-ground_surf = pygame.image.load('graphics/Ground.png').convert()
-
-# Оставить! Возможно потребуется переработать!
-# ground_rect = ground_surf.get_rect(topleft=(0, 300))
-ground_rect_1 = ground_surf.get_rect(topleft=(0, 300))
-ground_rect_2 = ground_surf.get_rect(topleft=(-8, 300))
-ground_rects = [ground_rect_1, ground_rect_2]
-ground_index = 0
-ground_rect = ground_rects[ground_index]
-
-# Timer
+# Timer.
 obstacle_timer = pygame.USEREVENT + 1
 pygame.time.set_timer(obstacle_timer, 1700)
 
-ground_animation_timer = pygame.USEREVENT + 2
-pygame.time.set_timer(ground_animation_timer, 200)
-
-# Main Game Loop
+# Main Game Loop.
 while True:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
@@ -175,61 +217,75 @@ while True:
             if event.type == obstacle_timer:
                 obstacle_group.add(Obstacle(choice(['fly', 'snail', 'snail'])))
 
-            if event.type == ground_animation_timer:
-                if ground_index == 0:
-                    ground_index = 1
-                else:
-                    ground_index = 0
-
-                ground_rect = ground_rects[ground_index]
-
         else:
             if event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE:
                 GAME_ACTIVE = True
 
     if GAME_ACTIVE:
-        # BackGround
-        screen.blit(sky_surf, sky_rect)
-        screen.blit(ground_surf, ground_rect)
+        # Update and Draw.
+        background_group.update()
+        background_group.draw(screen)
 
-        # Score.
-        score = display_score()
-
-        # Draw and Update.
         player.update()
         player.draw(screen)
 
         obstacle_group.update()
         obstacle_group.draw(screen)
 
+        score = display_score()
+
         GAME_ACTIVE = collision_sprite()
-
+        PLAY_DEATH = not (GAME_ACTIVE)
     else:
-        screen.fill((94, 129, 162))
-        screen.blit(player_stand_surf, player_stand_rect)
+        # Death animation.
+        if PLAY_DEATH:
+            player.update()
+            PLAY_DEATH = test.update()
 
-        game_over_surf = game_font.render('Game Over', False, 'Gold')
-        game_over_surf = pygame.transform.rotozoom(game_over_surf, 0, 2)
-        game_over_rect = game_over_surf.get_rect(center=(400, 50))
+            background_group.draw(screen)
+            obstacle_group.draw(screen)
+            player.draw(screen)
 
-        if score > 0:
-            score_surf = game_font.render(f'Score: {score}', False, 'Gold')
-            score_surf = pygame.transform.rotozoom(score_surf, 0, 1)
-            score_rect = score_surf.get_rect(center=(400, 95))
-
-            screen.blit(game_over_surf, game_over_rect)
+            score_surf = game_font.render(
+                f'Score: {score}', False, (64, 64, 64)
+            )
+            score_rect = score_surf.get_rect(center=(400, 50))
             screen.blit(score_surf, score_rect)
         else:
-            game_name_surf = game_font.render('Pixel Runner', False, 'Gold')
-            game_name_surf = pygame.transform.rotozoom(game_name_surf, 0, 1.5)
-            game_name_rect = game_name_surf.get_rect(center=(400, 70))
+            test.death_jump = DEATH_JUMP
+            obstacle_group.empty()
 
-            screen.blit(game_name_surf, game_name_rect)
+            screen.fill((94, 129, 162))
+            screen.blit(player_stand_surf, player_stand_rect)
 
-        hint_surf = game_font.render('Press SPACE to start.', False, 'Gold')
-        hint_rect = hint_surf.get_rect(center=(400, 350))
+            game_over_surf = game_font.render('Game Over', False, 'Gold')
+            game_over_surf = pygame.transform.rotozoom(game_over_surf, 0, 2)
+            game_over_rect = game_over_surf.get_rect(center=(400, 50))
 
-        screen.blit(hint_surf, hint_rect)
+            if score > 0:
+                score_surf = game_font.render(f'Score: {score}', False, 'Gold')
+                score_surf = pygame.transform.rotozoom(score_surf, 0, 1)
+                score_rect = score_surf.get_rect(center=(400, 95))
+
+                screen.blit(game_over_surf, game_over_rect)
+                screen.blit(score_surf, score_rect)
+            else:
+                game_name_surf = game_font.render(
+                    'Pixel Runner', False, 'Gold'
+                )
+                game_name_surf = pygame.transform.rotozoom(
+                    game_name_surf, 0, 1.5
+                )
+                game_name_rect = game_name_surf.get_rect(center=(400, 70))
+
+                screen.blit(game_name_surf, game_name_rect)
+
+            hint_surf = game_font.render(
+                'Press SPACE to start.', False, 'Gold'
+            )
+            hint_rect = hint_surf.get_rect(center=(400, 350))
+
+            screen.blit(hint_surf, hint_rect)
 
         start_time = int(pygame.time.get_ticks() / 1000)
 
@@ -237,6 +293,5 @@ while True:
     clock.tick(60)
 
 
-# Добавить паузу
-# Добавить анимацию "смерти" (персонаж подпрыгивает и падает под землю)
-# Добавить ускорение противников со временем
+# Add pause option
+# increase difficult with increasing time
