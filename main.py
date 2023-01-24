@@ -15,8 +15,8 @@ PLAYER_POSITION = (50, GROUND_LEVEL)  # Bottomleft (x, y)
 FLY_BOTTOM = 210
 SNAIL_BOTTOM = GROUND_LEVEL
 OBSTACLE_SPAWN_RANGE = [900, 1100]
-DEATH_JUMP = 5
-# PLAYER_JUMP = -20
+DEATH_JUMP_FORCE = 5
+PLAYER_JUMP_FORCE = 20
 
 # Images.
 PLAYER_WALK_1 = 'graphics/Player/Player_walk_1.png'
@@ -47,7 +47,7 @@ class Player(pygame.sprite.Sprite):
         self.rect = self.image.get_rect(bottomleft=(PLAYER_POSITION))
         self.gravity = 0
 
-        self.death_jump = DEATH_JUMP
+        self.death_jump = DEATH_JUMP_FORCE
 
     def animation_state(self):
         if self.rect.bottom < GROUND_LEVEL:
@@ -61,7 +61,7 @@ class Player(pygame.sprite.Sprite):
     def player_input(self):
         keys = pygame.key.get_pressed()
         if keys[pygame.K_SPACE] and self.rect.bottom >= GROUND_LEVEL:
-            self.gravity = -20
+            self.gravity = -PLAYER_JUMP_FORCE
 
     def aply_gravity(self):
         self.gravity += 1
@@ -168,7 +168,7 @@ def display_score():
 
 
 def collision_sprite():
-    if pygame.sprite.spritecollide(player.sprite, obstacle_group, False):
+    if pygame.sprite.spritecollide(player_group.sprite, obstacle_group, False):
         return False
     else:
         return True
@@ -193,9 +193,9 @@ player_stand_rect = player_stand_surf.get_rect(center=(400, 210))
 background_group = pygame.sprite.Group()
 background_group.add(Background('ground'), Background('sky'))
 
-player = pygame.sprite.GroupSingle()
-test = Player()
-player.add(test)
+player_group = pygame.sprite.GroupSingle()
+player_sprite = Player()
+player_group.add(player_sprite)
 
 obstacle_group = pygame.sprite.Group()
 
@@ -226,8 +226,8 @@ while True:
         background_group.update()
         background_group.draw(screen)
 
-        player.update()
-        player.draw(screen)
+        player_group.update()
+        player_group.draw(screen)
 
         obstacle_group.update()
         obstacle_group.draw(screen)
@@ -235,16 +235,16 @@ while True:
         score = display_score()
 
         GAME_ACTIVE = collision_sprite()
-        PLAY_DEATH = not (GAME_ACTIVE)
+        PLAY_DEATH = not GAME_ACTIVE
     else:
         # Death animation.
         if PLAY_DEATH:
-            player.update()
-            PLAY_DEATH = test.update()
+            player_group.update()
+            PLAY_DEATH = player_sprite.update()
 
             background_group.draw(screen)
             obstacle_group.draw(screen)
-            player.draw(screen)
+            player_group.draw(screen)
 
             score_surf = game_font.render(
                 f'Score: {score}', False, (64, 64, 64)
@@ -252,7 +252,7 @@ while True:
             score_rect = score_surf.get_rect(center=(400, 50))
             screen.blit(score_surf, score_rect)
         else:
-            test.death_jump = DEATH_JUMP
+            player_sprite.death_jump = DEATH_JUMP_FORCE
             obstacle_group.empty()
 
             screen.fill((94, 129, 162))
