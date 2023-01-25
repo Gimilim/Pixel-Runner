@@ -294,4 +294,6 @@ while True:
 
 
 # Add pause option
-# increase difficult with increasing time
+# Increase difficult with increasing time
+# Add main class
+# Add settings file
